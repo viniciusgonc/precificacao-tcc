@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 import sys
 import time
 import streamlit as st
@@ -23,10 +24,8 @@ st.set_page_config(
 # ── CONFIGURAÇÕES DE TEMA NA SIDEBAR ──────────────────────────────────────────
 st.sidebar.title("🎨 Customização da Interface")
 
-# Escolha do modo de exibição
 modo_tela = st.sidebar.radio("Modo de Exibição", ["Claro", "Escuro"], index=0)
 
-# Pequena paleta conceitual de cores para os balões do usuário
 paletas_cores = {
     "Roxo Real": {"primary": "#8B5CF6", "hover": "#7C3AED", "text": "#FFFFFF"},
     "Azul Clássico": {"primary": "#3B82F6", "hover": "#2563EB", "text": "#FFFFFF"},
@@ -37,7 +36,6 @@ paletas_cores = {
 cor_selecionada = st.sidebar.selectbox("Cor de Destaque (User)", list(paletas_cores.keys()))
 ui_cor = paletas_cores[cor_selecionada]
 
-# Definição das variáveis CSS baseadas no modo de exibição selecionado
 if modo_tela == "Claro":
     css_bg_app = "#F3F4F6"
     css_bg_chat_bot = "#FFFFFF"
@@ -51,7 +49,6 @@ else:
     css_border = "#374151"
     css_sidebar = "#1F2937"
 
-# ── CUSTOM CSS DINÂMICO INJETADO ──────────────────────────────────────────────
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap');
@@ -60,23 +57,19 @@ html, body, [class*="css"] {{
     font-family: 'DM Sans', sans-serif;
 }}
 
-/* Cor de fundo da aplicação */
 .stApp {{
     background-color: {css_bg_app};
 }}
 
-/* Estilização da Sidebar */
 [data-testid="stSidebar"] {{
     background-color: {css_sidebar} !important;
     border-right: 1px solid {css_border};
 }}
 
-/* Top header area limpa */
 [data-testid="stHeader"] {{
     background: transparent;
 }}
 
-/* Customização geral dos balões do Streamlit */
 [data-testid="stChatMessage"] {{
     border-radius: 16px;
     padding: 12px 16px;
@@ -85,7 +78,6 @@ html, body, [class*="css"] {{
     border: 1px solid {css_border};
 }}
 
-/* Distinção visual para balões de mensagens do Usuário e do Assistente */
 [data-testid="stChatMessage"]:has([data-testid="user-avatar"]) {{
     background-color: {ui_cor['primary']} !important;
     color: {ui_cor['text']} !important;
@@ -103,7 +95,6 @@ html, body, [class*="css"] {{
     color: {css_text_bot} !important;
 }}
 
-/* Estilização das abinhas retráteis (Expanders) de Tools */
 .stExpander {{
     background-color: {css_bg_chat_bot} !important;
     border: 1px solid {css_border} !important;
@@ -118,7 +109,6 @@ html, body, [class*="css"] {{
     font-weight: 500;
 }}
 
-/* Status info boxes de carregamento sutil */
 .status-box {{
     background: {css_bg_chat_bot};
     border-left: 3px solid {ui_cor['primary']};
@@ -128,17 +118,32 @@ html, body, [class*="css"] {{
     color: {css_text_bot};
     margin: 4px 0;
 }}
+
+.fase-badge {{
+    display: inline-block;
+    background-color: {ui_cor['primary']}22;
+    color: {ui_cor['primary']};
+    border: 1px solid {ui_cor['primary']}55;
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    margin-bottom: 8px;
+}}
 </style>
 """, unsafe_allow_html=True)
 
 
+# ── SYSTEM PROMPT MINIFICADO E HIGIENIZADO ───────────────────────────────────
 SYSTEM_PROMPT = """
 # ATUAÇÃO DO AGENTE
 Você é um consultor de precificação para Microempreendedores Individuais (MEIs) brasileiros. Alie rigor matemático a um atendimento didático, transparente e acolhedor.
 
 ## 1. REGRAS CRÍTICAS DE CONDUÇÃO (ANTI-ALUCINAÇÃO)
 - PROIBIDO CÁLCULO MANUAL: Você não calcula nada de cabeça. Valores numéricos de preço e ponto de equilíbrio devem vir EXCLUSIVAMENTE do retorno das ferramentas MCP. Nunca deduza valores no texto.
-- PROIBIDO PARALELISMO DEPENDENTE: Nunca chame calcular_ponto_de_equilibrio junto com ferramentas de preço (calcular_preco_por_margem_contribuicao ou calcular_preco_unitario). Aguarde o preço ser gerado no backend pelo Python para, no turno seguinte, usar o valor exato.
+- PROIBIDO PARALELISMO DEPENDENTE: Nunca chame calcular_ponto_de_equilibrio junto com ferramentas de preço no mesmo turno. Aguarde o preço ser gerado no backend pelo Python para, no passo sequencial seguinte do loop, usar o valor exato retornado.
+- PROIBIDO CHAMAR TOOLS DE PREÇO ANTES DO SINAL VERDE: As ferramentas calcular_preco_por_margem_contribuicao, calcular_preco_unitario e calcular_produto_unico só podem ser acionadas DEPOIS que o usuário enviar a mensagem de confirmação. Antes disso, apenas apresente o checklist e aguarde.
 
 ## 2. PROTOCOLO SEQUENCIAL DE TRIAGEM
 Siga rigorosamente as etapas abaixo. Mesmo que o usuário envie os dados todos de uma vez, passe pelas fases de confirmação de forma transparente.
@@ -152,28 +157,29 @@ Siga rigorosamente as etapas abaixo. Mesmo que o usuário envie os dados todos d
 - Confirme o percentual consolidado com o usuário. Custos variáveis em reais (como frete fixo) devem ser somados direto no custo bruto da Fase 1, nunca aqui.
 
 ### FASE 3: Despesas Fixas Estruturais (R$ para %)
-- Solicite a soma das contas fixas mensais (aluguel, luz, agua, DAS) e o faturamento mensal geral da empresa.
-- Chame obrigatoriamente converter_custo_fixo_para_percentual. Mostre o resultado em % ao usuário e explique o impacto desse peso na estrutura do negócio.
+- Solicite a soma das contas fixas mensais e o faturamento mensal geral da empresa.
+- Chame obrigatoriamente converter_custo_fixo_para_percentual. Mostre o resultado em % ao usuário.
 
 ### FASE 4: Diagnóstico e Checklist de Confirmação (UX OBRIGATÓRIA)
 - Chame a ferramenta validar_percentuais com os dados coletados.
-- Se o custo fixo percentual for abusivo (acima de 30% ou 40%), avise o usuário que o Markup tradicional gerará um preço inviável de mercado. Interrompa a rota de Markup e proponha a estratégia de Margem de Contribuição Alvo (sugira 40% de margem).
-- ANTES de acionar qualquer ferramenta de cálculo final de preço, você deve parar a geração e apresentar exatamente este modelo de mensagem na tela:
+- Se o custo fixo percentual for acima de 30%, avise que o Markup tradicional gerará um preço inviável. Proponha a estratégia de Margem de Contribuição Alvo (sugira 40% de margem).
+- ATENÇÃO CRÍTICA: Apresente o checklist contendo os valores exatos calculados pelas ferramentas MCP e pare a geração para aguardar a resposta do usuário.
+- Apresente EXATAMENTE este modelo de mensagem na tela preenchendo as variáveis:
 
 "Perfeito! Já tenho o diagnóstico estrutural do seu negócio em mãos. Para não darmos um tiro no escuro, vou realizar o cálculo usando estes valores exatos do seu negócio:
 - Custo Unitário de Insumos: R$ X,XX
 - Taxas e Despesas Variáveis: X,X%
+- Custo Fixo (% sobre faturamento): X,X%
 - Estratégia Escolhida: [Margem de Contribuição Alvo de X% ou Markup Tradicional com X% de Lucro]
 
 Me confirme se os valores estão corretos e me dê o seu sinal verde (digite 'Pode calcular') para eu rodar o sistema e te entregar o preço ideal de vitrine e a sua meta de vendas!"
 
 ### FASE 5: Execução Pós-Sinal Verde e Transparência
-- SÓ acione as ferramentas de preço final (calcular_preco_por_margem_contribuicao, calcular_preco_unitario ou calcular_produto_unico) após o usuário responder confirmando o checklist da Fase 4.
-- Assim que ele autorizar, dispare a tool de preço. Apresente o resultado do Python detalhando cada linha: custo, valor retornado que vai para as taxas e valor que sobra.
-- No turno seguinte, dispare calcular_ponto_de_equilibrio de forma isolada e exiba a meta física de quantas unidades ele precisa vender no mês para pagar a estrutura.
+- SÓ realize o cálculo após o usuário confirmar com "Pode calcular" ou mensagem equivalente.
+- Apresente o resultado do Python detalhando cada linha: custo, valor retornado que vai para as taxas e valor que sobra de margem de contribuição em reais.
+- No passo seguinte do loop de iteração interna, dispare calcular_ponto_de_equilibrio de forma isolada usando os valores reais calculados.
 
 ## 3. MAPEAMENTO DE PARAMETROS MCP
-Gere os JSONs usando rigorosamente a nomenclatura do Python:
 - consolidar_despesas_variaveis -> taxa_maquininha_cartao, comissao_marketplace, imposto_sobre_venda, outros_percentuais
 - converter_custo_fixo_para_percentual -> custo_fixo_mensal, faturamento_mensal
 - validar_percentuais -> despesas_variaveis, despesas_fixas, lucro_pretendido
@@ -183,50 +189,31 @@ Gere os JSONs usando rigorosamente a nomenclatura do Python:
 - calcular_preco_por_margem_contribuicao -> custo_unitario, despesas_variaveis, margem_contribuicao_alvo
 
 ## 4. REGRAS DE SINTAXE
-- Percentuais: Sempre na base 100 (ex: 8% = 8.0, 53.33% = 53.33). Nunca use frações decimais (0.08).
-- Sem marcas no texto: Nunca escreva marcas como "<function=...>" ou semelhantes por extenso nas respostas.
+- Percentuais: Sempre na base 100 (ex: 8% = 8.0). Nunca use fractions decimais (0.08).
+- Sem marcas no texto: Nunca escreva marcas como "<function=...>" no texto da mensagem de exibição.
 - Tipagem pura: Parâmetros numéricos sem aspas (ex: 10.0, 550.0).
 - Idioma: Português do Brasil.
 """
 
-# ── Header ─────────────────────────────────────────────────────────────────────
-st.markdown("## 💰 Assistente de Precificação")
-st.caption("Converse naturalmente sobre como precificar seus produtos e serviços.")
-st.divider()
-
-# ── Session state ───────────────────────────────────────────────────────────────
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "system", "content": SYSTEM_PROMPT}
-    ]
-
-# ── Helpers ─────────────────────────────────────────────────────────────────────
+# ── HELPERS GLOBAIS (DEFINIDOS ANTES DO USO) ──────────────────────────────────
 CAMPOS_VALIDOS_API = {"role", "content", "name", "tool_call_id", "tool_calls"}
 
-# ── EFICIÊNCIA DE TOKENS: FILTRO INTELIGENTE IMPLEMENTADO ABAIXO ──────────────────
-def mensagens_para_api(messages: list) -> list:
-    api_msgs = []
-    for i, msg in enumerate(messages):
-        # O prompt do sistema viaja sempre intacto
-        if msg["role"] == "system":
-            api_msgs.append({k: v for k, v in msg.items() if k in CAMPOS_VALIDOS_API})
-            continue
-        
-        # Identifica se é um log de execução de ferramenta antigo
-        is_old_tool_log = False
-        if msg["role"] == "tool" or (msg["role"] == "assistant" and msg.get("tool_calls")):
-            # Se houver qualquer mensagem de texto final do assistente depois dela, o bloco antigo caducou
-            for posterior_msg in messages[i+1:]:
-                if posterior_msg["role"] == "assistant" and posterior_msg.get("content") and not posterior_msg.get("tool_calls"):
-                    is_old_tool_log = True
-                    break
-        
-        # Se não for um log de ferramenta do passado, envia com segurança para a API
-        if not is_old_tool_log:
-            filtered_msg = {k: v for k, v in msg.items() if k in CAMPOS_VALIDOS_API}
-            api_msgs.append(filtered_msg)
-            
-    return api_msgs
+FRASES_SINAL_VERDE = [
+    "pode calcular",
+    "calcular agora",
+    "confirmo, pode calcular",
+    "confirmo pode calcular",
+    "sim, pode calcular",
+    "pode calcular!",
+]
+
+TOOLS_CALCULO_FINAL = {
+    "calcular_preco_unitario",
+    "calcular_produto_unico",
+    "calcular_preco_por_margem_contribuicao",
+}
+
+TOOLS_PONTO_EQUILIBRIO = {"calcular_ponto_de_equilibrio"}
 
 def deve_exibir(msg: dict) -> bool:
     if msg["role"] not in ("user", "assistant"):
@@ -238,8 +225,66 @@ def deve_exibir(msg: dict) -> bool:
         return False
     return True
 
-# Função para simular o efeito de máquina de escrever do ChatGPT (Streaming)
+def detectar_sinal_verde(texto: str) -> bool:
+    texto_normalizado = texto.strip().lower()
+    return any(frase in texto_normalizado for frase in FRASES_SINAL_VERDE)
+
+def atualizar_contexto_negocio(texto: str):
+    keywords = [
+        "não vendo só", "não vendo apenas", "também vendo", "outros produtos",
+        "loja física", "loja online", "vendo online", "vendo no instagram",
+        "vendo no whatsapp", "home office", "sem loja", "autônomo",
+    ]
+    for kw in keywords:
+        if kw in texto.lower():
+            obs = texto.strip()
+            if obs not in st.session_state.dados_precificacao["contexto_negocio"]:
+                st.session_state.dados_precificacao["contexto_negocio"].append(obs)
+            break
+
+def limpar_resposta(texto: str) -> str:
+    if not texto:
+        return texto
+    texto = re.sub(r'<function=\w+>\s*\{.*?\}\s*</function>', '', texto, flags=re.DOTALL)
+    texto = re.sub(r'<function=\w+>.*', '', texto, flags=re.DOTALL)
+    linhas = [linha for linha in texto.splitlines() if linha.strip()]
+    return '\n'.join(linhas).strip()
+
+def mensagens_para_api(messages: list) -> list:
+    api_msgs = []
+    for i, msg in enumerate(messages):
+        if msg["role"] == "system":
+            api_msgs.append({k: v for k, v in msg.items() if k in CAMPOS_VALIDOS_API})
+            continue
+
+        is_old_tool_log = False
+        if msg["role"] == "tool" or (msg["role"] == "assistant" and msg.get("tool_calls")):
+            user_msgs_depois = sum(
+                1 for m in messages[i + 1:] if m["role"] == "user"
+            )
+            if user_msgs_depois >= 2:
+                is_old_tool_log = True
+
+        if not is_old_tool_log:
+            filtered_msg = {k: v for k, v in msg.items() if k in CAMPOS_VALIDOS_API}
+            api_msgs.append(filtered_msg)
+
+    return api_msgs
+
+def label_fase(fase: int) -> str:
+    labels = {
+        1: "Fase 1 — Custos Diretos",
+        2: "Fase 2 — Despesas Variáveis",
+        3: "Fase 3 — Despesas Fixas",
+        4: "Fase 4 — Diagnóstico & Checklist",
+        5: "Fase 5 — Cálculo Autorizado",
+        6: "Fase 6 — Ponto de Equilíbrio",
+    }
+    return labels.get(fase, f"Fase {fase}")
+
 def simular_streaming_texto(texto: str):
+    if not texto:
+        return
     placeholder = st.empty()
     texto_acumulado = ""
     for palavra in texto.split(" "):
@@ -248,7 +293,61 @@ def simular_streaming_texto(texto: str):
         time.sleep(0.015)
     placeholder.markdown(texto_acumulado)
 
-# ── Render histórico de conversas ───────────────────────────────────────────────
+# ── STATE MACHINE — Inicialização do session_state ──────────────────────────────
+if "fase_protocolo" not in st.session_state:
+    st.session_state.fase_protocolo = 1
+
+if "dados_precificacao" not in st.session_state:
+    st.session_state.dados_precificacao = {
+        "custo_unitario": None,
+        "quantidade": None,
+        "tipo_produto": None,
+        "despesas_variaveis": None,
+        "custo_fixo_mensal": None,
+        "faturamento_mensal": None,
+        "despesas_fixas_pct": None,
+        "estrategia": None,
+        "lucro_ou_margem_alvo": None,
+        "preco_calculado": None,
+        "contexto_negocio": [],
+    }
+
+if "sinal_verde" not in st.session_state:
+    st.session_state.sinal_verde = False
+
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "system", "content": SYSTEM_PROMPT}
+    ]
+
+# ── Indicador de fase na sidebar ─────────────────────────────────────────────
+st.sidebar.divider()
+st.sidebar.markdown("### 📍 Progresso da Consulta")
+fases_labels = ["Custos Diretos", "Despesas Variáveis", "Despesas Fixas", "Diagnóstico", "Cálculo", "Equilíbrio"]
+for i, fl in enumerate(fases_labels, start=1):
+    if i < st.session_state.fase_protocolo:
+        st.sidebar.markdown(f"✅ Fase {i}: {fl}")
+    elif i == st.session_state.fase_protocolo:
+        st.sidebar.markdown(f"🔵 **Fase {i}: {fl}** ← atual")
+    else:
+        st.sidebar.markdown(f"⬜ Fase {i}: {fl}")
+
+# Botão para reiniciar a consulta
+st.sidebar.divider()
+if st.sidebar.button("🔄 Nova Consulta"):
+    st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    st.session_state.fase_protocolo = 1
+    st.session_state.sinal_verde = False
+    st.session_state.dados_precificacao = {
+        "custo_unitario": None, "quantidade": None, "tipo_produto": None,
+        "despesas_variaveis": None, "custo_fixo_mensal": None,
+        "faturamento_mensal": None, "despesas_fixas_pct": None,
+        "estrategia": None, "lucro_ou_margem_alvo": None,
+        "preco_calculado": None, "contexto_negocio": [],
+    }
+    st.rerun()
+
+# ── Render histórico ──────────────────────────────────────────────────────────
 for msg in st.session_state.messages:
     if not deve_exibir(msg):
         continue
@@ -258,8 +357,15 @@ for msg in st.session_state.messages:
         with st.expander(f"⚙️ Tool utilizada: `{msg['tool_usada']}`", expanded=False):
             st.caption("Esta ferramenta MCP foi disparada com sucesso para computar os dados de forma exata.")
 
-# ── Query / Fluxo do Agente de IA ───────────────────────────────────────────────
+# ── Query / Fluxo do Agente Autônomo com Loop Iterativo ───────────────────────
 async def query_agent(prompt: str):
+    atualizar_contexto_negocio(prompt)
+
+    if detectar_sinal_verde(prompt):
+        st.session_state.sinal_verde = True
+        if st.session_state.fase_protocolo == 4:
+            st.session_state.fase_protocolo = 5
+
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     with st.chat_message("user"):
@@ -281,31 +387,54 @@ async def query_agent(prompt: str):
                     status_box.markdown('<div class="status-box">🔌 Sincronizando ferramentas de precificação…</div>', unsafe_allow_html=True)
                     tools_response = await session.list_tools()
 
-                    groq_tools = [
-                        {
+                    # ── INJEÇÃO DINÂMICA DE TOOLS (CONDITIONAL TOOLING) ──
+                    groq_tools = []
+                    for tool in tools_response.tools:
+                        if not st.session_state.sinal_verde:
+                            if tool.name in TOOLS_CALCULO_FINAL or tool.name in TOOLS_PONTO_EQUILIBRIO:
+                                continue
+                        
+                        groq_tools.append({
                             "type": "function",
                             "function": {
                                 "name": tool.name,
                                 "description": tool.description,
                                 "parameters": tool.inputSchema,
                             },
-                        }
-                        for tool in tools_response.tools
-                    ]
+                        })
 
                     groq_client = AsyncGroq()
                     tool_usada = None
+                    resposta_final = ""
 
-                    status_box.markdown('<div class="status-box">🧠 Consultando inteligência de negócios…</div>', unsafe_allow_html=True)
-                    response = await groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=mensagens_para_api(st.session_state.messages),
-                        tools=groq_tools,
-                    )
+                    # ── O LOOP DE AGENTE 'WHILE TRUE' LIMPO E RECURSIVO ─────────────────
+                    while True:
+                        mensagens_api = mensagens_para_api(st.session_state.messages)
+                        
+                        if not st.session_state.sinal_verde and st.session_state.fase_protocolo < 5:
+                            lembrete_fase = {
+                                "role": "system",
+                                "content": (
+                                    f"[GUARDRAIL INTERNO] O protocolo está na {label_fase(st.session_state.fase_protocolo)}. "
+                                    f"O sinal verde ainda NÃO foi dado pelo usuário. Preencha o checklist com os valores reais das ferramentas."
+                                    f"Dados estruturais atuais: {json.dumps(st.session_state.dados_precificacao, ensure_ascii=False)}."
+                                )
+                            }
+                            mensagens_api = mensagens_api + [lembrete_fase]
 
-                    message = response.choices[0].message
+                        status_box.markdown('<div class="status-box">🧠 Consultando inteligência de negócios…</div>', unsafe_allow_html=True)
+                        response = await groq_client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=mensagens_api,
+                            tools=groq_tools if groq_tools else None,
+                        )
 
-                    if message.tool_calls:
+                        message = response.choices[0].message
+
+                        if not message.tool_calls:
+                            resposta_final = limpar_resposta(message.content)
+                            break
+
                         st.session_state.messages.append(
                             message.model_dump(exclude_none=True)
                         )
@@ -315,7 +444,7 @@ async def query_agent(prompt: str):
                             tool_args = json.loads(tool_call.function.arguments)
                             tool_usada = tool_name
 
-                            status_box.markdown(f'<div class="status-box">⚙️ Executando operação estrutural: `{tool_name}`…</div>', unsafe_allow_html=True)
+                            status_box.markdown(f'<div class="status-box">⚙️ Executando: <code>{tool_name}</code>…</div>', unsafe_allow_html=True)
 
                             result = await session.call_tool(tool_name, tool_args)
 
@@ -329,6 +458,26 @@ async def query_agent(prompt: str):
                             except (json.JSONDecodeError, AttributeError, IndexError) as e:
                                 result_dict = {"raw_result": str(e)}
 
+                            # Sincronização de estados robusta baseada nos retornos do Python
+                            if tool_name == "converter_custo_fixo_para_percentual" and "percentual" in result_dict:
+                                st.session_state.dados_precificacao["despesas_fixas_pct"] = result_dict["percentual"]
+                                if st.session_state.fase_protocolo <= 3:
+                                    st.session_state.fase_protocolo = 4
+                            elif tool_name == "consolidar_despesas_variaveis" and "despesas_variaveis_totais" in result_dict:
+                                st.session_state.dados_precificacao["despesas_variaveis"] = result_dict["despesas_variaveis_totais"]
+                                if st.session_state.fase_protocolo <= 2:
+                                    st.session_state.fase_protocolo = 3
+                            elif tool_name == "validar_percentuais":
+                                if st.session_state.fase_protocolo <= 3:
+                                    st.session_state.fase_protocolo = 4
+                            elif tool_name in TOOLS_CALCULO_FINAL:
+                                preco = result_dict.get("preco_unitario") or result_dict.get("preco_final") or result_dict.get("preco_venda")
+                                if preco:
+                                    st.session_state.dados_precificacao["preco_calculado"] = preco
+                                st.session_state.fase_protocolo = 6
+                            elif tool_name == "calcular_ponto_de_equilibrio":
+                                st.session_state.fase_protocolo = 6
+
                             st.session_state.messages.append({
                                 "role": "tool",
                                 "tool_call_id": tool_call.id,
@@ -336,14 +485,7 @@ async def query_agent(prompt: str):
                                 "content": json.dumps(result_dict, ensure_ascii=False),
                             })
 
-                        status_box.markdown('<div class="status-box">✍️ Estruturando resposta interpretada…</div>', unsafe_allow_html=True)
-                        final_response = await groq_client.chat.completions.create(
-                            model="llama-3.3-70b-versatile",
-                            messages=mensagens_para_api(st.session_state.messages),
-                        )
-                        resposta_final = final_response.choices[0].message.content
-                    else:
-                        resposta_final = message.content
+                        await asyncio.sleep(0.5)
 
                     status_box.empty()
                     simular_streaming_texto(resposta_final)
