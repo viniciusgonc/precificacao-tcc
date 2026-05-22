@@ -20,15 +20,22 @@ class Precificacao:
         Onde DV = despesas variáveis, DF = despesas fixas, LP = lucro pretendido.
 
         Args:
-            despesas_variaveis: percentual (%) de custos que variam com cada venda.
-            despesas_fixas: percentual (%) dos custos fixos do negócio rateados.
-            lucro_pretendido: percentual (%) de lucro líquido desejado.
+            despesas_variaveis: percentual (%) de custos que variam com cada venda,
+                como taxas de marketplace, comissão de vendedor, embalagem por unidade.
+                Exemplo: 10.0 representa 10%.
+            despesas_fixas: percentual (%) dos custos fixos do negócio rateados sobre
+                o produto, como aluguel, energia elétrica, internet, contador.
+                Exemplo: 15.0 representa 15%.
+            lucro_pretendido: percentual (%) de lucro líquido desejado sobre o preço
+                de venda final. Exemplo: 20.0 representa 20%.
 
         Returns:
             float: o markup calculado, sempre maior que 1.0.
 
         Raises:
-            ValueError: se a soma dos três percentuais for >= 100 ou negativa.
+            ValueError: se a soma dos três percentuais for >= 100, pois tornaria
+                o markup matematicamente impossível (divisão por zero ou negativo).
+            ValueError: se a soma dos percentuais for negativa.
         """
         soma_percentuais = despesas_variaveis + despesas_fixas + lucro_pretendido
 
@@ -52,6 +59,26 @@ class Precificacao:
     ) -> float:
         """
         Calcula quanto custa produzir uma única unidade de um produto feito em lote.
+
+        Divide o custo total de produção do lote pela quantidade produzida.
+        É um método interno auxiliar — não deve ser chamado diretamente pelo MCP.
+
+        Exemplo: se o empreendedor gastou R$50 para fazer 100 brigadeiros,
+        o custo unitário é R$0,50 por brigadeiro.
+
+        Args:
+            custo_total: valor total em reais gasto para produzir o lote completo,
+                incluindo matéria-prima, embalagem, gás, ingredientes, etc.
+                Deve ser maior que zero.
+            quantidade: número total de unidades produzidas no lote.
+                Deve ser um número inteiro positivo maior que zero.
+
+        Returns:
+            float: custo de produção por unidade em reais.
+
+        Raises:
+            ValueError: se custo_total for menor ou igual a zero.
+            ValueError: se quantidade for menor ou igual a zero.
         """
         if custo_total <= 0:
             raise ValueError("O custo total deve ser maior que zero.")
@@ -76,15 +103,42 @@ class Precificacao:
         produto em uma única produção — por exemplo: fez 100 brigadeiros gastando
         R$50 no total, ou produziu 30 sabonetes artesanais com R$90 em insumos.
 
+        O método divide o custo total pela quantidade para obter o custo unitário,
+        depois aplica o markup para chegar ao preço de venda que garante a cobertura
+        de todas as despesas e o lucro desejado.
+
+        Etapas internas:
+            1. Calcula o custo unitário: custo_total / quantidade
+            2. Calcula o markup: 100 / (100 - (DV + DF + LP))
+            3. Calcula o preço unitário: custo_unitario × markup
+            4. Calcula o preço total: preco_unitario × quantidade
+
+        Exemplos de uso:
+            - Brigadeiros: 100 unidades com custo total de R$50
+            - Cosméticos artesanais: 20 potes com custo total de R$180
+            - Velas decorativas: 50 unidades com custo total de R$200
+
         Args:
-            custo_total: valor total em reais investido na produção do lote inteiro.
-            quantidade: número de unidades produzidas no lote.
-            despesas_variaveis: percentual (%) de custos dinâmicos por venda.
-            despesas_fixas: percentual (%) dos custos fixos alocados sobre o produto.
-            lucro_pretendido: percentual (%) de lucro líquido desejado.
+            custo_total: valor total em reais investido na produção do lote inteiro
+                (matéria-prima, embalagens, energia, etc.). Deve ser maior que zero.
+            quantidade: número de unidades produzidas no lote. Deve ser maior que zero.
+            despesas_variaveis: percentual (%) de custos que incidem sobre cada venda,
+                como taxas de cartão, comissões, frete. Exemplo: 5.0 para 5%.
+            despesas_fixas: percentual (%) dos custos fixos mensais do negócio
+                alocados sobre o produto, como aluguel e energia. Exemplo: 10.0 para 10%.
+            lucro_pretendido: percentual (%) de lucro líquido desejado sobre o preço
+                final de venda. Exemplo: 20.0 para 20%.
 
         Returns:
-            dict: custo_unitario, markup, preco_unitario e preco_total do lote.
+            dict com as seguintes chaves:
+                - custo_unitario (float): custo de produção por unidade em reais
+                - markup (float): fator multiplicador calculado (ex: 1.4286)
+                - preco_unitario (float): preço de venda recomendado por unidade em reais
+                - preco_total (float): faturamento total esperado ao vender todo o lote
+
+        Raises:
+            ValueError: se custo_total ou quantidade forem inválidos.
+            ValueError: se a soma dos percentuais for >= 100% ou negativa.
         """
         custo_unitario = self._calcular_custo_unitario(custo_total, quantidade)
         markup = self._calcular_markup(despesas_variaveis, despesas_fixas, lucro_pretendido)
@@ -110,16 +164,39 @@ class Precificacao:
 
         Use este método quando o produto é feito individualmente, sem produção em lote
         — por exemplo: um quadro pintado à mão, um bolo personalizado encomendado,
-        uma bolsa de crochê sob medida ou um serviço/manutenção individual.
+        um conserto de eletrodoméstico, uma sessão de fotografia ou qualquer serviço
+        onde o custo já se refere àquela entrega específica.
+
+        Diferente do cálculo por quantidade, aqui o custo de produção já é o custo
+        daquele produto ou serviço específico — não há divisão por quantidade.
+        O markup é aplicado diretamente sobre esse custo para gerar o preço final.
+
+        Exemplos de uso:
+            - Artesanato sob encomenda: bolsa de crochê com R$35 em materiais
+            - Serviço de design: logo criado com R$0 em custo direto, mas com horas trabalhadas valoradas
+            - Bolo personalizado: encomenda específica com R$80 em ingredientes
+            - Manutenção: reparo de equipamento com R$40 em peças
 
         Args:
-            custo_producao: valor em reais gasto para entregar este item ou serviço específico.
-            despesas_variaveis: percentual (%) de custos dinâmicos por venda.
-            despesas_fixas: percentual (%) dos custos fixos estruturais do negócio.
-            lucro_pretendido: percentual (%) de lucro líquido desejado.
+            custo_producao: valor em reais gasto para produzir ou entregar este produto
+                ou serviço específico (materiais, insumos, horas, deslocamento, etc.).
+                Deve ser maior que zero.
+            despesas_variaveis: percentual (%) de custos que incidem sobre cada venda,
+                como taxas de pagamento, comissões, frete. Exemplo: 5.0 para 5%.
+            despesas_fixas: percentual (%) dos custos fixos mensais do negócio
+                alocados sobre este produto, como aluguel e energia. Exemplo: 10.0 para 10%.
+            lucro_pretendido: percentual (%) de lucro líquido desejado sobre o preço
+                final de venda. Exemplo: 20.0 para 20%.
 
         Returns:
-            dict: custo_producao original, markup e o preco_final recomendado.
+            dict com as seguintes chaves:
+                - custo_producao (float): custo original informado, em reais
+                - markup (float): fator multiplicador calculado (ex: 1.8182)
+                - preco_final (float): preço de venda recomendado em reais
+
+        Raises:
+            ValueError: se custo_producao for menor ou igual a zero.
+            ValueError: se a soma dos percentuais for >= 100% ou negativa.
         """
         if custo_producao <= 0:
             raise ValueError("O custo de produção deve ser maior que zero.")
@@ -133,7 +210,7 @@ class Precificacao:
             "preco_final": round(preco_final, 2)
         }
 
-    # ─── NOVAS FERRAMENTAS AGREGADAS PARA SUPORTE E SEGURANÇA DA IA ──────────────────
+    # ─── MÉTODOS DE SUPORTE E SEGURANÇA SINCRO COM SERVER.PY ────────────────────────
 
     def consolidar_despesas_variaveis(
             self,
@@ -144,34 +221,6 @@ class Precificacao:
     ) -> dict:
         """
         Agrupa e soma múltiplos custos variáveis percentuais (%) comuns em vendas de MEIs.
-
-        Pequenos empreendedores frequentemente lidam com várias taxas dinâmicas em uma única venda 
-        (ex: a taxa do cartão de crédito, a comissão da plataforma de entrega e o imposto). Esta 
-        ferramenta centraliza esses valores, somando-os para entregar o percentual total de 
-        despesas variáveis necessário para o cálculo do Markup.
-
-        DIRETRIZ CRÍTICA DE PRECIFICAÇÃO PARA A IA (RESOLUÇÃO DE ERROS NOMINAIS):
-        Se o usuário relatar uma despesa variável que possui um VALOR FIXO EM REAIS por unidade de 
-        venda (por exemplo: 'pago R$ 4,00 pela caixa de correio' ou 'a plataforma me cobra R$ 6,00 
-        fixos por venda executada'), você NÃO deve colocar esse valor nominal nesta ferramenta. 
-        Instrua o usuário de que custos fixos em reais por unidade devem ser somados DIRETAMENTE 
-        junto ao custo de produção/insumos do produto. Valores nominais em reais entram no custo bruto; 
-        apenas taxas puramente percentuais (%) entram aqui.
-
-        Como explicar o resultado ao MEI:
-        Apresente o somatório das taxas e diga que esse percentual representa a fatia que os 
-        intermediários financeiros e de vendas vão retirar do preço final de cada produto comercializado.
-
-        Args:
-            taxa_maquininha_cartao: Percentual (%) cobrado pela máquina de cartão ou gateway (ex: 3.5).
-            comissao_marketplace: Percentual (%) de plataformas (ex: Mercado Livre, Shopee, iFood) (ex: 11.0).
-            imposto_sobre_venda: Percentual (%) de impostos diretos sobre a nota emitida (ex: 4.0).
-            outros_percentuais: Outras taxas proporcionais ao preço final (ex: comissões de vendedores).
-
-        Returns:
-            dict contendo:
-                - despesas_variaveis_totais (float): O somatório de todas as taxas percentuais pronto para o Markup.
-                - resumo_taxas (dict): Espelho detalhado dos valores processados para conferência.
         """
         if any(v < 0 for v in [taxa_maquininha_cartao, comissao_marketplace, imposto_sobre_venda, outros_percentuais]):
             raise ValueError("Atenção: nenhuma taxa ou percentual de despesa pode ser um valor negativo.")
@@ -195,25 +244,6 @@ class Precificacao:
     ) -> dict:
         """
         Transforma os custos fixos nominais em reais (R$) no percentual (%) correspondente ao faturamento.
-
-        Microempreendedores sabem o valor exato do aluguel ou da internet em reais, mas o método de 
-        precificação por Markup exige que esses custos estruturais sejam convertidos em percentual. 
-        Esta ferramenta resolve isso dividindo o custo fixo estrutural total pelo faturamento mensal 
-        (real ou estimado) informado pelo empreendedor.
-
-        Como explicar o resultado ao MEI:
-        Explique que o percentual retornado representa a fatia exata de cada venda que será 
-        obrigatoriamente separada apenas para pagar a estrutura e manter as portas abertas, antes de 
-        cobrir os custos do material do próprio produto ou do lucro.
-
-        Args:
-            custo_fixo_mensal: Soma total em reais das contas fixas mensais do negócio (ex: aluguel, DAS, internet).
-            faturamento_mensal: Faturamento total em reais bruto que a empresa gera ou projeta faturar no mês.
-
-        Returns:
-            dict contendo:
-                - percentual (float): O peso percentual do custo fixo sobre o faturamento.
-                - explicacao (str): Texto didático pronto para ser integrado à narrativa com o usuário.
         """
         if faturamento_mensal <= 0:
             raise ValueError("O faturamento mensal estimado deve ser maior que zero para evitar divisão por zero.")
@@ -240,28 +270,6 @@ class Precificacao:
     ) -> dict:
         """
         Verifica preventivamente se a combinação de despesas e lucros permite um cálculo matematicamente viável.
-
-        Atua como um guardião matemático. Se a soma de (Despesas Variáveis + Despesas Fixas + Lucro Pretendido) 
-        for igual ou maior que 100%, a conta de Markup quebra (gerando divisão por zero ou números negativos). 
-        Isso indica na realidade do negócio que a soma das taxas estruturais e da ambição de lucro consumiram 
-        todo o valor comercial do produto, inviabilizando cobrir os materiais de fabricação.
-
-        Como agir com base no retorno:
-        - Se 'valido' for True: Siga em frente para o cálculo final de preço.
-        - Se 'valido' for False: Interrompa o fluxo de precificação imediatamente. Explique de maneira acolhedora 
-          que a combinação atual ultrapassa os limites sustentáveis da precificação por markup e que eles precisam 
-          rever as metas de despesas ou planejar um faturamento maior.
-
-        Args:
-            despesas_variaveis: Percentual (%) de custos variáveis totais (calculado previamente).
-            despesas_fixas: Percentual (%) de despesas fixas estruturais (calculado previamente).
-            lucro_pretendido: Percentual (%) de margem de lucro líquido desejado pelo MEI sobre a venda.
-
-        Returns:
-            dict contendo:
-                - valido (bool): True se a operação matemática for segura; False se for impossível.
-                - soma (float): O somatório dos três percentuais passados.
-                - mensagem (str): Uma explicação amigável detalhando a saúde ou a inviabilidade da combinação.
         """
         if despesas_variaveis < 0 or despesas_fixas < 0 or lucro_pretendido < 0:
             return {
@@ -299,27 +307,6 @@ class Precificacao:
     ) -> dict:
         """
         Calcula o Ponto de Equilíbrio operacional mensal (Break-even Point) em unidades e faturamento.
-
-        Responde à dúvida de viabilidade comercial mais frequente dos MEIs: 
-        "Quantas unidades exatas deste produto eu preciso vender por mês para conseguir pagar todas as contas da empresa?".
-        
-        A ferramenta calcula a Margem de Contribuição Unitária (Preço - Custo Unitário), que é o valor que de 
-        fato sobra de cada venda realizada para ir se acumulando no caixa até liquidar o custo fixo da estrutura.
-
-        Como explicar o resultado ao MEI:
-        Diga de forma direta: "Para pagar sua estrutura de custos fixos, você precisa vender no mínimo X unidades 
-        deste produto no mês, atingindo um faturamento mínimo de R$ Y. A partir da unidade X+1, você terá lucro real."
-
-        Args:
-            custos_fixos_mensais: O valor nominal total em REAIS das despesas fixas estruturais por mês (ex: R$ 800.00).
-            preco_unitario: O preço final de venda em REAIS que foi calculado para o produto ou serviço.
-            custo_unitario: O custo direto em REAIS de produção/insumos de uma única unidade (ou item do lote).
-
-        Returns:
-            dict contendo:
-                - unidades_minimas (int): Meta mínima de vendas no mês (arredondada para cima, pois não se vende fração de item).
-                - faturamento_minimo (float): O faturamento bruto necessário para empatar as contas mensais.
-                - margem_contribuicao_un (float): O valor em reais que sobra limpo de cada unidade vendida para pagar o custo fixo.
         """
         if custos_fixos_mensais < 0:
             raise ValueError("Os custos fixos mensais estruturais não podem ser negativos.")
@@ -351,28 +338,6 @@ class Precificacao:
     ) -> dict:
         """
         Simula automaticamente três opções de preços comerciais baseadas em metas distintas de lucro líquido.
-
-        Impede que o microempreendedor precise 'chutar' uma margem de lucro sem critérios comerciais claros. 
-        A ferramenta calcula três perfis estruturados de lucro sobre os custos e taxas enviados:
-          1. Conservador (15% de lucro): Preço de combate mais baixo, excelente para penetração de mercado ou queima de estoque.
-          2. Moderado (25% de lucro): O patamar ideal, seguro e equilibrado para a sustentabilidade de comércios e artesanias.
-          3. Arrojado (40% de lucro): Preço premium mais alto, voltado para produtos de alta exclusividade ou encomendas personalizadas.
-
-        Como apresentar ao MEI:
-        Exiba os três preços sugeridos explicando a estratégia competitiva de cada um para que o empreendedor decida 
-        com autonomia qual cenário se adapta melhor ao bolso dos clientes dele e aos preços da concorrência.
-
-        Args:
-            custo_producao: Custo bruto de materiais do item único ou custo por unidade obtido do lote em REAIS.
-            despesas_variaveis: Percentual (%) total de custos por venda (taxas de transação/plataformas).
-            despesas_fixas: Percentual (%) de despesas estruturais calculado sobre o faturamento do negócio.
-
-        Returns:
-            dict contendo chaves para os cenários ('conservador', 'moderado', 'arrojado'), cada uma contendo:
-                - lucro_percentual (float): A margem líquida simulada.
-                - markup (float): O fator multiplicador resultante.
-                - preco_final (float): O preço final de venda gerado para aquele cenário.
-                - viavel (bool): Sinaliza se a simulação foi bem-sucedida ou se os custos atuais inviabilizaram a margem.
         """
         cenarios = {
             "conservador": 15.0,
@@ -404,3 +369,72 @@ class Precificacao:
                 }
 
         return resultado_simulacao
+
+    # ─── NOVO MÉTODO COMPATÍVEL COM MARGEM DE CONTRIBUIÇÃO ALVO ──────────────────────
+
+    def calcular_preco_por_margem_contribuicao(
+            self,
+            custo_unitario: float,
+            despesas_variaveis: float,
+            margem_contribuicao_alvo: float
+    ) -> dict:
+        """
+        Calcula o preço de venda ideal com base em uma meta de Margem de Contribuição Alvo (%).
+
+        Esta metodologia resolve o problema do 'Círculo Vicioso do Markup', impedindo que custos 
+        fixos altos de estrutura rateados sobre faturamentos pequenos distorçam o preço final 
+        de itens de alto giro (evitando um energético inviável comercialmente). 
+        
+        Em vez de embutir os custos fixos estruturais de forma nominal, define-se uma margem 
+        percentual realista e mercadológica que cada unidade vendida reterá. Esse saldo gerado 
+        entrará no caixa geral para ajudar a pagar a estrutura fixa estrutural da empresa.
+
+        Como explicar o resultado ao MEI:
+        Apresente o preço calculado e enfatize o valor em reais da Margem de Contribuição. Explique 
+        didaticamente que esses reais que 'sobram' de cada venda não são o lucro puro imediato, mas 
+        sim a força de contribuição daquele produto para pagar o aluguel e as contas de luz da loja.
+
+        Args:
+            custo_unitario: O custo direto de aquisição ou matéria-prima de uma unidade em REAIS (ex: 10.0).
+            despesas_variaveis: Percentual (%) de custos dinâmicos associados exclusivamente à venda (taxas de cartão).
+            margem_contribuicao_alvo: Percentual (%) do preço final de venda que deve sobrar limpo para pagar os custos fixos estruturais e gerar o lucro global da empresa.
+
+        Returns:
+            dict contendo:
+                - custo_unitario (float): O custo unitário original de aquisição.
+                - despesas_variaveis_percentual (float): O percentual de taxas dinâmicas aplicado.
+                - margem_contribuicao_alvo_percentual (float): O percentual de margem alvo definido.
+                - margem_contribuicao_reais (float): O valor em reais gerado por unidade para cobrir a estrutura fixa.
+                - preco_venda (float): O preço final sugerido de vitrine.
+
+        Raises:
+            ValueError: Se custo_unitario for menor ou igual a zero.
+            ValueError: Se despesas_variaveis ou margem_contribuicao_alvo forem inválidos ou somados atingirem >= 100%.
+        """
+        if custo_unitario <= 0:
+            raise ValueError("O custo unitário do produto deve ser maior que zero.")
+        if despesas_variaveis < 0 or margem_contribuicao_alvo <= 0:
+            raise ValueError("As despesas variáveis não podem ser negativas e a margem de contribuição alvo deve ser maior que zero.")
+
+        soma_percentuais = despesas_variaveis + margem_contribuicao_alvo
+
+        if soma_percentuais >= 100:
+            raise ValueError(
+                f"A combinação de despesas variáveis ({despesas_variaveis}%) e margem de contribuição alvo "
+                f"({margem_contribuicao_alvo}%) somou {soma_percentuais}%. O cálculo é inviável porque a soma das "
+                f"taxas e da margem de contribuição atingiu ou passou de 100% do valor do produto."
+            )
+
+        # Fórmula matemática linear descontando as taxas e a margem do denominador
+        preco_venda = (custo_unitario * 100) / (100 - soma_percentuais)
+        
+        # Valor real em dinheiro que sobra por unidade para empurrar as despesas fixas para baixo
+        margem_reais = preco_venda * (margem_contribuicao_alvo / 100)
+
+        return {
+            "custo_unitario": round(custo_unitario, 2),
+            "despesas_variaveis_percentual": round(despesas_variaveis, 2),
+            "margem_contribuicao_alvo_percentual": round(margem_contribuicao_alvo, 2),
+            "margem_contribuicao_reais": round(margem_reais, 2),
+            "preco_venda": round(preco_venda, 2)
+        }

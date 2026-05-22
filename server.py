@@ -272,5 +272,45 @@ def calcular_ponto_de_equilibrio(
         return json.dumps(erro_dict, ensure_ascii=False)
 
 
+# ─── NOVA FERRAMENTA DE MARGEM DE CONTRIBUIÇÃO ALVO ADICIONADA ABAIXO ────────────
+
+@mcp.tool()
+def calcular_preco_por_margem_contribuicao(
+    custo_unitario: float,
+    despesas_variaveis: float,
+    margem_contribuicao_alvo: float
+) -> str:
+    """
+    Calcula o preço de venda ideal com base em uma meta de Margem de Contribuição Alvo (%).
+
+    DIRETRIZ DE USO PARA A IA:
+    Use esta ferramenta como uma alternativa estratégica e inteligente quando o Markup tradicional 
+    inflar o preço final de vitrine de forma irrealista e não competitiva (por exemplo, devido a 
+    custos fixos estruturais extremamente altos em relação a faturamentos pequenos).
+    
+    Esta ferramenta define o preço ideal garantindo que cada unidade vendida retenha uma fatia 
+    saudável em dinheiro para ajudar a pagar a estrutura fixa da empresa e, posteriormente, gerar 
+    o lucro global, de forma sustentável para o mercado.
+
+    Args:
+        custo_unitario: O custo direto de aquisição ou matéria-prima de uma única unidade em REAIS.
+        despesas_variaveis: Percentual (%) de custos dinâmicos associados estritamente à venda (ex: taxas de cartão).
+        margem_contribuicao_alvo: Percentual (%) do preço final de venda desejado como margem de contribuição (ex: 40.0 para 40%).
+    """
+    print("[MCP] calcular_preco_por_margem_contribuicao foi chamada!", file=sys.stderr, flush=True)
+    try:
+        resultado = precificador.calcular_preco_por_margem_contribuicao(
+            custo_unitario=custo_unitario,
+            despesas_variaveis=despesas_variaveis,
+            margem_contribuicao_alvo=margem_contribuicao_alvo
+        )
+        print(f"[MCP] resultado calculado: {resultado}", file=sys.stderr, flush=True)
+        return json.dumps(resultado, ensure_ascii=False)
+    except ValueError as e:
+        erro_dict = {"sucesso": False, "erro": str(e)}
+        print(f"[MCP] erro na ferramenta: {erro_dict}", file=sys.stderr, flush=True)
+        return json.dumps(erro_dict, ensure_ascii=False)
+
+
 if __name__ == "__main__":
     mcp.run()
