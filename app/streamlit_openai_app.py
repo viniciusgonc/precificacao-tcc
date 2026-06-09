@@ -70,7 +70,7 @@ DADOS_PRECIFICACAO_VAZIO = {
  
 SYSTEM_PROMPT = """
 # ATUAÇÃO DO AGENTE
-Você é um consultor de precificação para Microempreendedores Individuais (MEIs) brasileiros. Alie rigor matemático a um atendimento didático, transparente e acolhedor.
+Você é um consultor de precificação e o **sócio estratégico** para Microempreendedores Individuais (MEIs) brasileiros. Alie o rigor matemático das ferramentas a um atendimento didático, empático, focado em educação financeira e altamente sensível ao contexto do produto ou serviço do usuário. Você enxerga o negócio do usuário como se fosse seu parceiro comercial.
  
 ## 1. REGRAS CRÍTICAS DE CONDUÇÃO (ANTI-ALUCINAÇÃO)
 - PROIBIDO CÁLCULO MANUAL: Você não calcula nada de cabeça. Valores numéricos de preço e ponto de equilíbrio devem vir EXCLUSIVAMENTE do retorno das ferramentas MCP. Nunca deduza valores no texto.
@@ -81,6 +81,8 @@ Você é um consultor de precificação para Microempreendedores Individuais (ME
  
 ### FASE 1: Insumos e Custos Diretos (R$)
 - Identifique se o produto opera em LOTE ou ITEM ÚNICO.
+- **Sensibilidade de Sócio:** Demonstre que entende o produto ou serviço do MEI. Adapte seus exemplos e termos ao nicho dele (se vende doces, fale de insumos culinários; se faz quadros/arte, fale de molduras, tintas e tempo de criação).
+- **Diferenciação de Volume:** Explique brevemente ao usuário que vender um **produto único** (ex: um serviço exclusivo ou item artesanal principal) exige que ele carregue uma responsabilidade maior sobre a estrutura da empresa, enquanto uma operação de **múltiplos produtos** permite diluir esses percentuais entre diferentes vendas.
 - Se for lote, apresente a divisão em reais e confirme o custo unitário bruto de base com o usuário antes de avançar.
 - Se houver custos diretos unitários já informados, registre-os como custo unitário de insumos.
  
@@ -88,23 +90,36 @@ Você é um consultor de precificação para Microempreendedores Individuais (ME
 - Identifique taxas de cartões, marketplaces, impostos sobre venda, comissões e outros percentuais.
 - Use consolidar_despesas_variaveis se houver taxas picadas.
 - Confirme o percentual consolidado com o usuário.
-- Custos variáveis em reais (frete fixo por unidade, embalagem) somam ao custo da Fase 1, nunca como percentual.
+- Custos variáveis in reais (frete fixo por unidade, embalagem) somam ao custo da Fase 1, nunca como percentual.
  
 ### FASE 3: Despesas Fixas Estruturais (R$ para %)
 - Solicite a soma das contas fixas mensais e o faturamento mensal geral da empresa.
 - Chame obrigatoriamente converter_custo_fixo_para_percentual. Mostre o resultado em %.
+- Reforce o impacto: se o MEI vende múltiplos produtos, esse percentual é o que este produto específico vai "carregar" para ajudar a pagar a estrutura interna.
  
-### FASE 4: Diagnóstico e Checklist de Confirmação
+### FASE 4: Diagnóstico, Educação e Coleta de Margem Alvo
 - Chame a ferramenta validar_percentuais com os dados coletados.
-- Se o custo fixo percentual for acima de 30%, avise que o Markup tradicional pode gerar um preço inviável.
-- Nesses casos, proponha a estratégia de Margem de Contribuição Alvo (sugira 40% de margem).
-- Apresente o checklist abaixo e aguarde o sinal verde do usuário.
+- **A Pergunta de Filtro Obrigatória:** Você deve abordar o usuário exatamente com esta abordagem:
+  *"Agora vamos pensar na margem de contribuição ou lucro pretendido. Você quer calcular por qual parâmetro? Conhece a diferença?"*
+ 
+- **Tratamento do Contexto de Conhecimento:**
+    * *Se o usuário já souber a diferença:* Pergunte diretamente qual o percentual que ele deseja aplicar e prossiga para a recomendação de sócio.
+    * *Se o usuário NÃO souber ou quiser entender:* Explique as duas abordagens utilizando estritamente os critérios abaixo:
+        * **Quando usar Markup (Lucro Pretendido):** Excelente para quem busca agilidade no dia a dia (como revendedores ou lojistas que multiplicam o custo de aquisição rapidamente) ou para quem faz controle de estoque em massa com milhares de produtos parecidos. Ele garante que o preço base pague o custo, mas não garante a rentabilidade final sozinho.
+        * **Quando usar Margem de Contribuição (Rentabilidade):** Essencial para vendas em E-commerce e Marketplaces (para calcular o impacto real de taxas e comissões), para quem precisa negociar descontos sabendo o limite antes do prejuízo, ou para quem tem um mix diversificado de produtos e quer descobrir quais trazem mais caixa para pagar as contas fixas.
+ 
+- **A Verdadeira Recomendação de Sócio (Análise de Viabilidade):** Antes de fechar o checklist, cruze os dados da Fase 1 e Fase 3. 
+  * Se o usuário produzir **pouquíssimo volume (ex: 1 quadro por mês)** e o custo fixo percentual for muito alto (acima de 30%), alerte-o de que a Margem de Contribuição tradicional em % pode fazer a conta estourar (passar de 100%). 
+  * **Recomendação Estratégica:** Nesses cenários de peça única e baixo volume, recomende usar o **Markup** calculando o Preço Base baseado no Custo de Produção + Valor do Custo Fixo absoluto em Reais que aquela peça precisa cobrir, adicionando o Lucro pretendido em cima, para que ele não saia no prejuízo. Os especialistas sugerem usar o markup para chegar ao preço base e depois checar a margem de contribuição para validar se a venda é rentável.
+ 
+- Após o usuário definir e alinhar a estratégia (Margem ou Markup) e o percentual desejado, apresente o checklist abaixo e aguarde.
  
 Modelo de checklist:
 "Perfeito! Já tenho o diagnóstico estrutural do seu negócio em mãos. Para não darmos um tiro no escuro, vou realizar o cálculo usando estes valores exatos do seu negócio:
 - Custo Unitário de Insumos: R$ X,XX
 - Taxas e Despesas Variáveis: X,X%
 - Custo Fixo (% sobre faturamento): X,X%
+- Dinâmica de Venda: [Único Produto / Múltiplos Produtos]
 - Estratégia Escolhida: [Margem de Contribuição Alvo de X% ou Markup Tradicional com X% de Lucro]
  
 Me confirme se os valores estão corretos e me dê o seu sinal verde (digite 'Pode calcular') para eu rodar o sistema e te entregar o preço ideal de vitrine e a sua meta de vendas!"
@@ -115,7 +130,7 @@ Me confirme se os valores estão corretos e me dê o seu sinal verde (digite 'Po
  
 ### FASE 6: Ponto de Equilíbrio
 - Dispare calcular_ponto_de_equilibrio de forma isolada usando os valores reais calculados.
-- Explique ao usuário quantas unidades ele precisa vender para cobrir os custos fixos mensais.
+- Explique ao usuário quantas unidades ele precisa vender para cobrir os custos fixos mensais com base no cenário dele.
  
 ## 3. MAPEAMENTO DE PARÂMETROS MCP
 - consolidar_despesas_variaveis -> taxa_maquininha_cartao, comissao_marketplace, imposto_sobre_venda, outros_percentuais
@@ -131,12 +146,13 @@ Me confirme se os valores estão corretos e me dê o seu sinal verde (digite 'Po
 - Parâmetros numéricos sem aspas (ex: 10.0, 550.0).
 - Nunca escreva marcações de ferramenta no texto final, como "<function=...>".
 - Nunca invente valores ausentes. Faça perguntas objetivas quando faltar info.
+- **Tom de Voz:** Adote uma postura de parceria societária, usando termos acolhedores que incluam você na busca pelo sucesso do negócio (ex: "nossa meta", "nossa margem", "precisamos cobrir").
 - Idioma: Português do Brasil.
 """
  
  
 # ═══════════════════════════════════════════════════════════════════════════════
-# SEÇÃO 3 — CONFIGURAÇÃO DA PÁGINA (deve ser a primeira chamada Streamlit)
+# SEÇÃO 3 — CONFIGURAÇÃO DA PÁGINA
 # ═══════════════════════════════════════════════════════════════════════════════
  
 st.set_page_config(
@@ -154,12 +170,17 @@ st.set_page_config(
 def _init_state():
     """Garante que todas as chaves do session_state existam."""
     defaults = {
-        "messages":          [{"role": "system", "content": SYSTEM_PROMPT}],
+        # Histórico COMPLETO — usado apenas para renderização visual na tela.
+        # NUNCA é comprimido ou truncado. O usuário sempre vê toda a conversa.
+        "messages_display": [{"role": "system", "content": SYSTEM_PROMPT}],
+        # Histórico para envio à API — pode ser comprimido pelo resumo automático.
+        # Contém system prompt + mensagens (possivelmente resumidas).
+        "messages_api":     [{"role": "system", "content": SYSTEM_PROMPT}],
         "fase_protocolo":    1,
         "sinal_verde":       False,
         "dados_precificacao": DADOS_PRECIFICACAO_VAZIO.copy(),
-        "session_tokens":    0,        # Contador acumulado de tokens
-        "resumo_ativo":      False,    # Flag: já foi gerado resumo nesta sessão?
+        "session_tokens":    0,
+        "resumo_ativo":      False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -173,12 +194,6 @@ _init_state()
 # ═══════════════════════════════════════════════════════════════════════════════
  
 def _build_css(cor: dict) -> str:
-    """
-    CSS mínimo.
-    Não interfere no tema claro/escuro nativo do Streamlit.
-    Personaliza apenas elementos do chat e detalhes da identidade visual.
-    """
-
     primary = cor["primary"]
     hover = cor["hover"]
     text_on_primary = cor["text"]
@@ -187,30 +202,25 @@ def _build_css(cor: dict) -> str:
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* Fonte geral, sem forçar cor nem fundo */
 html, body, [class*="css"] {{
     font-family: 'Plus Jakarta Sans', sans-serif !important;
 }}
 
-/* Mantém o menu nativo do Streamlit visível */
 footer {{
     visibility: hidden !important;
 }}
 
-/* Espaçamento do conteúdo principal */
 .block-container {{
     padding-top: 7rem !important;
     padding-bottom: 10rem !important;
 }}
 
-/* Mensagens do chat */
 [data-testid="stChatMessage"] {{
     margin-bottom: 10px !important;
     padding: 14px 18px !important;
     border-radius: 18px !important;
 }}
 
-/* Mensagem do usuário: usa a cor de destaque escolhida */
 [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]),
 [data-testid="stChatMessage"]:has([data-testid="user-avatar"]) {{
     background-color: {primary} !important;
@@ -223,13 +233,11 @@ footer {{
     color: {text_on_primary} !important;
 }}
 
-/* Mensagem do assistente: não força fundo, só melhora o formato */
 [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]),
 [data-testid="stChatMessage"]:has([data-testid="assistant-avatar"]) {{
     border-radius: 18px 18px 18px 4px !important;
 }}
 
-/* Botão de envio do chat */
 [data-testid="stChatInput"] button {{
     background-color: {primary} !important;
     color: {text_on_primary} !important;
@@ -241,7 +249,6 @@ footer {{
     background-color: {hover} !important;
 }}
 
-/* Botões normais do Streamlit */
 .stButton button {{
     background-color: {primary} !important;
     color: {text_on_primary} !important;
@@ -255,7 +262,6 @@ footer {{
     background-color: {hover} !important;
 }}
 
-/* Status box customizado */
 .status-box {{
     border-left: 3px solid {primary};
     border-radius: 8px;
@@ -265,7 +271,6 @@ footer {{
     font-family: 'Plus Jakarta Sans', sans-serif;
 }}
 
-/* Token badge */
 .token-badge {{
     background: rgba(217, 119, 6, 0.10);
     border: 1px solid rgba(217, 119, 6, 0.35);
@@ -282,7 +287,6 @@ footer {{
     color: {primary} !important;
 }}
 
-/* Expander de ferramenta */
 .stExpander summary,
 .stExpander summary * {{
     font-family: 'JetBrains Mono', monospace !important;
@@ -290,7 +294,6 @@ footer {{
     color: {primary} !important;
 }}
 
-/* Código inline */
 code {{
     color: {primary} !important;
     border-radius: 6px !important;
@@ -299,20 +302,15 @@ code {{
 </style>
 """
  
-
-
  
 # ═══════════════════════════════════════════════════════════════════════════════
-# SEÇÃO 6 — SIDEBAR (renderizada antes do chat para capturar preferências)
+# SEÇÃO 6 — SIDEBAR
 # ═══════════════════════════════════════════════════════════════════════════════
  
 def renderizar_progresso_sidebar(container) -> None:
-    """Renderiza o progresso atual dentro de um container/sidebar placeholder."""
     with container:
         st.markdown("### 📍 Progresso")
-
         fase_atual = st.session_state.fase_protocolo
-
         for i, fl in enumerate(FASES_LABELS, start=1):
             if i < fase_atual:
                 st.markdown(f"✅ **Fase {i}:** {fl}")
@@ -323,33 +321,26 @@ def renderizar_progresso_sidebar(container) -> None:
 
 
 def renderizar_tokens_sidebar(container) -> None:
-    """Renderiza o contador de tokens atual dentro de um container/sidebar placeholder."""
     with container:
         st.markdown("### 🔢 Uso de Tokens")
-
         tokens = st.session_state.session_tokens
-
         st.markdown(
             f'<div class="token-badge">Sessão atual<br/>'
             f'<strong>{tokens:,}</strong> tokens usados</div>',
             unsafe_allow_html=True,
         )
-
         if st.session_state.resumo_ativo:
-            st.caption("🗜️ Resumo automático ativo — histórico comprimido")
-
+            st.caption("🗜️ Resumo automático ativo — contexto da IA comprimido (histórico visual preservado)")
         custo_estimado = tokens * 0.00000037
         st.caption(f"Custo estimado: ~US$ {custo_estimado:.4f}")
 
 
 def atualizar_sidebar_dinamica() -> None:
-    """Atualiza progresso e tokens em tempo de execução."""
     if "progress_placeholder" in st.session_state:
         st.session_state.progress_placeholder.empty()
         renderizar_progresso_sidebar(
             st.session_state.progress_placeholder.container()
         )
-
     if "tokens_placeholder" in st.session_state:
         st.session_state.tokens_placeholder.empty()
         renderizar_tokens_sidebar(
@@ -361,9 +352,7 @@ with st.sidebar:
     st.caption(f"Modelo: `{MODEL}`")
     st.divider()
 
-    # ── Personalização visual ──────────────────────────────────────────────────
     st.markdown("### 🎨 Aparência")
-
     cor_nome = st.selectbox(
         "Cor de destaque",
         list(COLOR_PALETTES.keys()),
@@ -373,21 +362,18 @@ with st.sidebar:
 
     st.divider()
 
-    # ── Progresso da consulta ──────────────────────────────────────────────────
     progress_placeholder = st.empty()
     st.session_state.progress_placeholder = progress_placeholder
     renderizar_progresso_sidebar(progress_placeholder.container())
 
     st.divider()
 
-    # ── Contador de tokens ─────────────────────────────────────────────────────
     tokens_placeholder = st.empty()
     st.session_state.tokens_placeholder = tokens_placeholder
     renderizar_tokens_sidebar(tokens_placeholder.container())
  
     st.divider()
  
-    # ── API Key ────────────────────────────────────────────────────────────────
     if not os.getenv("OPENAI_API_KEY"):
         api_key = st.text_input("🔑 OpenAI API Key", type="password")
         if api_key:
@@ -398,18 +384,16 @@ with st.sidebar:
  
     st.divider()
  
-    # ── Botão nova consulta ────────────────────────────────────────────────────
     if st.button("🔄 Nova Consulta", use_container_width=True):
-        st.session_state.messages          = [{"role": "system", "content": SYSTEM_PROMPT}]
-        st.session_state.fase_protocolo    = 1
-        st.session_state.sinal_verde       = False
+        st.session_state.messages_display   = [{"role": "system", "content": SYSTEM_PROMPT}]
+        st.session_state.messages_api       = [{"role": "system", "content": SYSTEM_PROMPT}]
+        st.session_state.fase_protocolo     = 1
+        st.session_state.sinal_verde        = False
         st.session_state.dados_precificacao = DADOS_PRECIFICACAO_VAZIO.copy()
-        st.session_state.resumo_ativo      = False
-        # Não resetamos o contador de tokens intencionalmente (reflete uso total)
+        st.session_state.resumo_ativo       = False
         st.rerun()
  
  
-# Injeta o CSS após capturar as preferências da sidebar
 st.markdown(_build_css(ui_cor), unsafe_allow_html=True)
  
  
@@ -428,13 +412,11 @@ def deve_exibir(msg: dict) -> bool:
  
  
 def detectar_sinal_verde(texto: str) -> bool:
-    """True se o usuário autorizou o cálculo final."""
     normalizado = texto.strip().lower()
     return any(frase in normalizado for frase in FRASES_SINAL_VERDE)
  
  
 def atualizar_contexto_negocio(texto: str) -> None:
-    """Registra observações sobre o negócio do usuário para manter contexto."""
     keywords = [
         "não vendo só", "não vendo apenas", "também vendo", "outros produtos",
         "loja física", "loja online", "vendo online", "vendo no instagram",
@@ -450,7 +432,6 @@ def atualizar_contexto_negocio(texto: str) -> None:
  
  
 def limpar_resposta(texto: str) -> str:
-    """Remove marcações técnicas de tools que eventualmente apareçam na resposta."""
     if not texto:
         return texto
     texto = re.sub(r'<function=\w+>\s*\{.*?\}\s*</function>', '', texto, flags=re.DOTALL)
@@ -460,7 +441,6 @@ def limpar_resposta(texto: str) -> str:
  
  
 def label_fase(fase: int) -> str:
-    """Retorna o label descritivo de uma fase do protocolo."""
     labels = {
         1: "Fase 1 — Custos Diretos",
         2: "Fase 2 — Despesas Variáveis",
@@ -471,11 +451,12 @@ def label_fase(fase: int) -> str:
     }
     return labels.get(fase, f"Fase {fase}")
 
+
 def mensagens_para_api(messages: list) -> list:
     """
-    Prepara o histórico para enviar à OpenAI.
-    Descarta logs técnicos antigos de tool calls (mais de 2 mensagens de usuário atrás),
-    preservando o conteúdo semântico e mensagens recentes de ferramenta.
+    Prepara o histórico da API para envio à OpenAI.
+    Descarta logs técnicos antigos de tool calls (mais de 2 mensagens de usuário atrás).
+    Opera sobre messages_api (já possivelmente resumido), nunca sobre messages_display.
     """
     api_msgs = []
     for i, msg in enumerate(messages):
@@ -496,10 +477,6 @@ def mensagens_para_api(messages: list) -> list:
  
  
 def sincronizar_estado_tool(tool_name: str, tool_args: dict, result_dict: dict) -> None:
-    """
-    Atualiza o session_state com base nos retornos das ferramentas MCP.
-    Centraliza toda a lógica de transição de fase.
-    """
     dados = st.session_state.dados_precificacao
  
     if tool_name == "converter_custo_fixo_para_percentual":
@@ -537,7 +514,6 @@ def sincronizar_estado_tool(tool_name: str, tool_args: dict, result_dict: dict) 
  
  
 def simular_streaming_texto(texto: str) -> None:
-    """Exibe texto com efeito de digitação palavra a palavra."""
     if not texto:
         return
     placeholder = st.empty()
@@ -549,32 +525,27 @@ def simular_streaming_texto(texto: str) -> None:
     placeholder.markdown(acumulado.strip())
  
  
-def _contar_tokens_estimativa(messages: list) -> int:
-    """
-    Estimativa simples de tokens quando não há retorno da API.
-    Regra empírica: ~1 token a cada 4 caracteres.
-    """
-    total_chars = sum(len(str(m.get("content", ""))) for m in messages)
-    return total_chars // 4
- 
- 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SEÇÃO 8 — MOTOR DE RESUMO AUTOMÁTICO
 # ═══════════════════════════════════════════════════════════════════════════════
  
 async def maybe_summarize_history(openai_client: AsyncOpenAI) -> None:
     """
-    Se o histórico ultrapassar SUMMARY_TRIGGER_COUNT mensagens de usuário,
-    resume as mensagens mais antigas e substitui por uma mensagem compacta de contexto.
-    As últimas SUMMARY_KEEP_RECENT mensagens são sempre preservadas integralmente.
+    Opera EXCLUSIVAMENTE sobre st.session_state.messages_api.
+    O histórico de exibição (messages_display) nunca é tocado — o usuário
+    sempre vê a conversa completa na tela.
+
+    Se o histórico da API ultrapassar SUMMARY_TRIGGER_COUNT mensagens de usuário,
+    resume as mensagens mais antigas e substitui por uma mensagem compacta de contexto,
+    preservando as últimas SUMMARY_KEEP_RECENT mensagens integralmente.
     """
-    messages = st.session_state.messages
+    messages = st.session_state.messages_api
     user_msgs = [m for m in messages if m["role"] == "user"]
  
     if len(user_msgs) <= SUMMARY_TRIGGER_COUNT:
-        return  # Ainda não precisa resumir
+        return
  
-    # Localiza o índice de corte: preserva as últimas N mensagens (user+assistant)
+    # Localiza o índice de corte preservando as últimas N mensagens
     recent_pairs_found = 0
     cutoff_index = len(messages)
     for i in range(len(messages) - 1, 0, -1):
@@ -584,7 +555,6 @@ async def maybe_summarize_history(openai_client: AsyncOpenAI) -> None:
                 cutoff_index = i
                 break
  
-    # Coleta mensagens antigas de texto (exclui system, tool_calls e msgs de ferramenta)
     to_summarize = [
         m for m in messages[1:cutoff_index]
         if m["role"] in ("user", "assistant")
@@ -593,9 +563,8 @@ async def maybe_summarize_history(openai_client: AsyncOpenAI) -> None:
     ]
  
     if len(to_summarize) < 4:
-        return  # Não há conteúdo suficiente para valer a pena resumir
+        return
  
-    # Solicita o resumo ao modelo
     resumo_prompt = [
         {
             "role": "system",
@@ -621,14 +590,13 @@ async def maybe_summarize_history(openai_client: AsyncOpenAI) -> None:
         max_tokens=600,
     )
  
-    # Atualiza o contador de tokens
     if response.usage:
         st.session_state.session_tokens += response.usage.total_tokens
  
     resumo_texto = response.choices[0].message.content.strip()
  
-    # Reconstrói o histórico: [system] + [resumo] + [mensagens recentes]
-    st.session_state.messages = (
+    # Reconstrói APENAS o histórico da API — messages_display permanece intacto
+    st.session_state.messages_api = (
         [messages[0]]  # system prompt original
         + [{
             "role": "system",
@@ -645,16 +613,17 @@ async def maybe_summarize_history(openai_client: AsyncOpenAI) -> None:
  
  
 # ═══════════════════════════════════════════════════════════════════════════════
-# SEÇÃO 9 — NÚCLEO DO AGENTE (loop iterativo com tools MCP)
+# SEÇÃO 9 — NÚCLEO DO AGENTE
 # ═══════════════════════════════════════════════════════════════════════════════
  
 async def query_agent(prompt: str) -> None:
     """
-    Fluxo principal do agente:
-    1. Registra a mensagem do usuário e atualiza estados.
-    2. Conecta ao servidor MCP local.
-    3. Executa o loop de tool-use até o modelo gerar resposta final em texto.
-    4. Opcionalmente resume o histórico se ficar longo demais.
+    Fluxo principal do agente.
+
+    Separação de responsabilidades:
+    - messages_display: recebe user + assistant em texto limpo. Nunca é comprimido.
+    - messages_api: recebe tudo (tool_calls, tool results, etc.) e pode ser resumido.
+    Ambos são alimentados em paralelo a cada turno.
     """
     atualizar_contexto_negocio(prompt)
  
@@ -664,7 +633,10 @@ async def query_agent(prompt: str) -> None:
             st.session_state.fase_protocolo = 5
         atualizar_sidebar_dinamica()
  
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    # Adiciona a mensagem do usuário nos dois históricos
+    user_msg = {"role": "user", "content": prompt}
+    st.session_state.messages_display.append(user_msg)
+    st.session_state.messages_api.append(user_msg)
  
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -699,9 +671,9 @@ async def query_agent(prompt: str) -> None:
  
                     # ── Loop de agente ─────────────────────────────────────────
                     while True:
-                        mensagens_api = mensagens_para_api(st.session_state.messages)
+                        # Usa messages_api (possivelmente resumido) para envio à OpenAI
+                        mensagens_api = mensagens_para_api(st.session_state.messages_api)
  
-                        # Guardrail: injeta lembrete de fase antes do sinal verde
                         if not st.session_state.sinal_verde and st.session_state.fase_protocolo < 5:
                             mensagens_api = mensagens_api + [_lembrete_fase()]
  
@@ -716,7 +688,6 @@ async def query_agent(prompt: str) -> None:
                             tools=openai_tools if openai_tools else None,
                         )
  
-                        # Atualiza contador de tokens
                         if response.usage:
                             st.session_state.session_tokens += response.usage.total_tokens
                             atualizar_sidebar_dinamica()
@@ -727,7 +698,8 @@ async def query_agent(prompt: str) -> None:
                             resposta_final = limpar_resposta(message.content)
                             break
  
-                        st.session_state.messages.append(message.model_dump(exclude_none=True))
+                        # Tool calls vão apenas para messages_api (não para display)
+                        st.session_state.messages_api.append(message.model_dump(exclude_none=True))
  
                         # ── Executa cada tool call ─────────────────────────────
                         for tool_call in message.tool_calls:
@@ -748,7 +720,8 @@ async def query_agent(prompt: str) -> None:
                             sincronizar_estado_tool(tool_name, tool_args, result_dict)
                             atualizar_sidebar_dinamica()
  
-                            st.session_state.messages.append({
+                            # Resultado da tool vai apenas para messages_api
+                            st.session_state.messages_api.append({
                                 "role": "tool",
                                 "tool_call_id": tool_call.id,
                                 "name": tool_name,
@@ -757,7 +730,7 @@ async def query_agent(prompt: str) -> None:
  
                         await asyncio.sleep(0.4)
  
-                    # ── Resumo automático pós-ciclo ────────────────────────────
+                    # ── Resumo automático — opera só em messages_api ───────────
                     await maybe_summarize_history(openai_client)
  
                     status_box.empty()
@@ -769,11 +742,14 @@ async def query_agent(prompt: str) -> None:
                                 "Esta ferramenta MCP foi executada com sucesso para computar os dados de forma exata."
                             )
  
-                    st.session_state.messages.append({
+                    # Resposta final vai para os DOIS históricos
+                    assistant_msg = {
                         "role": "assistant",
                         "content": resposta_final,
                         "tool_usada": tool_usada,
-                    })
+                    }
+                    st.session_state.messages_display.append(assistant_msg)
+                    st.session_state.messages_api.append(assistant_msg)
  
         except Exception as exc:
             import traceback
@@ -784,10 +760,6 @@ async def query_agent(prompt: str) -> None:
 # ── Funções privadas de suporte ao agente ──────────────────────────────────────
  
 def _converter_tools_mcp(tools_mcp: list) -> list:
-    """
-    Converte a lista de tools MCP para o formato da API da OpenAI.
-    Filtra ferramentas de cálculo final enquanto o sinal verde não foi dado.
-    """
     resultado = []
     for tool in tools_mcp:
         bloqueada = (not st.session_state.sinal_verde) and (
@@ -806,7 +778,6 @@ def _converter_tools_mcp(tools_mcp: list) -> list:
  
  
 def _lembrete_fase() -> dict:
-    """Injeta um guardrail contextual com a fase atual e dados coletados."""
     return {
         "role": "system",
         "content": (
@@ -819,11 +790,11 @@ def _lembrete_fase() -> dict:
  
  
 def _parse_tool_result(result) -> dict:
-    """Transforma o retorno bruto de uma tool MCP em dict Python."""
     try:
         if result.content:
             raw = result.content[0]
             result_text = raw.text if hasattr(raw, "text") else str(raw)
+            result_text = result_text.encode('utf-8', errors='ignore').decode('utf-8')
             return json.loads(result_text.strip()) if result_text.strip() else {}
         return {}
     except (json.JSONDecodeError, AttributeError, IndexError) as exc:
@@ -840,9 +811,10 @@ st.caption("Consultoria inteligente com ferramentas de cálculo exato via MCP + 
  
 # ═══════════════════════════════════════════════════════════════════════════════
 # SEÇÃO 11 — RENDERIZAÇÃO DO HISTÓRICO
+# Lê de messages_display — nunca comprimido, sempre completo.
 # ═══════════════════════════════════════════════════════════════════════════════
  
-for msg in st.session_state.messages:
+for msg in st.session_state.messages_display:
     if not deve_exibir(msg):
         continue
     with st.chat_message(msg["role"]):
