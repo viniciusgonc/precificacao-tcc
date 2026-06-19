@@ -737,10 +737,8 @@ async def query_agent(prompt: str) -> None:
                     simular_streaming_texto(resposta_final)
  
                     if tool_usada:
-                        with st.expander(f"⚙️ Ferramenta utilizada: `{tool_usada}`", expanded=False):
-                            st.caption(
-                                "Esta ferramenta MCP foi executada com sucesso para computar os dados de forma exata."
-                            )
+                        with st.expander(f"Ferramenta utilizada: {tool_usada}", expanded=False, icon="⚙️"):
+                            pass
  
                     # Resposta final vai para os DOIS históricos
                     assistant_msg = {
@@ -819,9 +817,9 @@ for msg in st.session_state.messages_display:
         continue
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-    if msg.get("tool_usada"):
-        with st.expander(f"⚙️ Ferramenta utilizada: `{msg['tool_usada']}`", expanded=False):
-            st.caption("Ferramenta MCP executada com sucesso para computar os dados de forma exata.")
+        if msg.get("tool_usada"):
+            with st.expander(f"Ferramenta utilizada: {msg['tool_usada']}", expanded=False, icon="⚙️"):
+                pass
  
  
 # ═══════════════════════════════════════════════════════════════════════════════
