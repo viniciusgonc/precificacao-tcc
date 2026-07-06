@@ -19,7 +19,7 @@ ROOT = str(Path(__file__).resolve().parents[1])
 # SEÇÃO 1 — CONSTANTES
 # ═══════════════════════════════════════════════════════════════════════════════
 
-MODEL = "gemini-2.0-flash"
+MODEL = "gemini-3.1-flash-lite"
 
 SUMMARY_TRIGGER_COUNT = 10
 SUMMARY_KEEP_RECENT = 6
